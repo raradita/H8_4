@@ -1,0 +1,224 @@
+# Assignment 2
+
+Link Repository : 
+https://github.com/raradita/H8_4/tree/main/PYTN_Assgn_2_4_RaraDitaPurnamaReta
+https://github.com/raradita/H8_4.git
+
+## Project Overview
+Using what you’ve learned; download the NYC Property Sales Dataset from Kaggle. This dataset is a record of every building or building unit (apartment, etc.) sold in the New York City property market over a 12-month period.
+
+This dataset contains the location, address, type, sale price, and sale date of building units sold. A reference on the trickier fields:
+
+- BOROUGH: A digit code for the borough the property is located in; in order these are Manhattan (1), Bronx (2), Brooklyn (3), Queens (4), and Staten Island (5).
+- BLOCK; LOT: The combination of borough, block, and lot forms a unique key for property in New York City. Commonly called a BBL.
+- BUILDING CLASS AT PRESENT and BUILDING CLASS AT TIME OF SALE: The type of building at various points in time.
+
+Note that because this is a financial transaction dataset, there are some points that need to be kept in mind:
+
+- Many sales occur with a nonsensically small dollar amount: $0 most commonly. These sales are actually transfers of deeds between parties: for example, parents transferring ownership to their home to a child after moving out for retirement.
+- This dataset uses the financial definition of a building/building unit, for tax purposes. In case a single entity owns the building in question, a sale covers the value of the entire building. In case a building is owned piecemeal by its residents (a condominium), a sale refers to a single apartment (or group of apartments) owned by some individual.
+
+Formulate a question and derive a statistical hypothesis test to answer the question. You have to demonstrate that you’re able to make decisions using data in a scientific manner. Examples of questions can be:
+
+- Is there a difference in unit sold between property built in 1900-2000 and 2001 so on?
+- Is there a difference in unit sold based on building category?
+- What can you discover about New York City real estate by looking at a year's worth of raw transaction records? Can you spot trends in the market?
+## Data Preparation
+Pertama kita harus perpustakaan yang akan kita gunakan.
+import math
+import statistics
+import numpy as np
+import scipy.stats
+import pandas as pd
+%matplotlib inline
+import matplotlib.pyplot as plt
+from IPython.display import Math, Latex
+from IPython.core.display import Image
+import seaborn as sns
+df = pd.read_csv('/Users/raraditapurnamareta/H8_4/PYTN_Assgn_2_4_RaraDitaPurnamaReta/nyc-rolling-sales.csv')
+
+print('Dataset is ready!')
+Lihat 5 baris teratas set data
+df.head()
+Lihat 5 baris terbawah set data
+df.tail()
+Lihat semua kolom dan tipe data
+df.info()
+Melihat shape di dataset
+df.shape
+Melihat header list
+df.columns.values
+## Pre-Processing
+Pertama, drop kolom yang tidak relevan
+df.drop(["Unnamed: 0"], axis=1, inplace=True)
+Memperbaiki tipe data hingga saat ini, 'coerce' berarti penguraian yang tidak valid akan ditetapkan sebagai NaN
+df['SALE DATE']= pd.to_datetime(df['SALE DATE'], errors='coerce')
+Memperbaiki tipe data menjadi numerik, 'coerce' berarti penguraian yang tidak valid akan ditetapkan sebagai NaN
+numeric = ["RESIDENTIAL UNITS","COMMERCIAL UNITS","TOTAL UNITS", "LAND SQUARE FEET" , "GROSS SQUARE FEET","SALE PRICE" ]
+
+for col in numeric: 
+    df[col] = pd.to_numeric(df[col], errors='coerce')
+Memperbaiki tipe data menjadi kategorikal
+categorical = ["BOROUGH","NEIGHBORHOOD",'BUILDING CLASS CATEGORY', 'TAX CLASS AT PRESENT', 'BUILDING CLASS AT PRESENT','ZIP CODE', 
+               'YEAR BUILT', 'BUILDING CLASS AT TIME OF SALE', 'TAX CLASS AT TIME OF SALE']
+
+for col in categorical: 
+    df[col] = df[col].astype("category")
+Cek data type
+df.info()
+Cek missing value
+df.isna().sum()/len(df)
+Cek blank cells as NaN
+df.replace(' ',np.nan, inplace=True)
+df.isna().sum() /len(df)
+Cek duplicate value
+df.duplicated().sum()
+Drop duplicate values
+df.drop_duplicates(inplace=True)
+Drop columns with too many NaN
+df.drop(["EASE-MENT","APARTMENT NUMBER"], axis=1, inplace=True)
+Menampilkan skewness of columns
+df.skew(axis=0, skipna=True)
+Hitung nilai yang hilang.
+
+Untuk tipe data numerik: jika skew < +-2 maka hubungkan dengan rata-rata, jika skew > +-2 maka hubungkan dengan median
+
+Untuk tipe data kategorik: hubungkan dengan mode
+df["TAX CLASS AT PRESENT"]=df["TAX CLASS AT PRESENT"].fillna(df["TAX CLASS AT PRESENT"].mode())
+df["BUILDING CLASS AT PRESENT"]=df["BUILDING CLASS AT PRESENT"].fillna(df["BUILDING CLASS AT PRESENT"].mode())
+df["LAND SQUARE FEET"]=df["LAND SQUARE FEET"].fillna(df["LAND SQUARE FEET"].median())
+df["GROSS SQUARE FEET"]=df["GROSS SQUARE FEET"].fillna(df["GROSS SQUARE FEET"].median())
+df["SALE PRICE"]=df["SALE PRICE"].fillna(df["SALE PRICE"].median())
+Cek missing value
+df.isna().sum()/len(df)
+Cek strange value
+a = df['YEAR BUILT'].drop_duplicates()
+a
+Cek strange value
+df.describe()
+Hitung nilai '0' di kolom tersebut
+print("YEAR BUILT '0' Count: ",df[df['YEAR BUILT']==0]['YEAR BUILT'].count())
+print("TOTAL UNIT '0' Count: ",df[df['TOTAL UNITS']==0]['TOTAL UNITS'].count())
+print("SALE PRICE '0' Count: ",df[df['SALE PRICE']==0]['SALE PRICE'].count())
+Kolom tersebut tidak boleh memiliki nilai '0
+df['YEAR BUILT'].replace(0, np.nan, inplace=True)
+df['TOTAL UNITS'].replace(0, np.nan, inplace=True)
+df['SALE PRICE'].replace(0, np.nan, inplace=True)
+Pastikan nilainya sudah di drop
+print("YEAR BUILT '0' Count: ",df[df['YEAR BUILT']==0]['YEAR BUILT'].count())
+print("TOTAL UNIT '0' Count: ",df[df['TOTAL UNITS']==0]['TOTAL UNITS'].count())
+print("SALE PRICE '0' Count: ",df[df['SALE PRICE']==0]['SALE PRICE'].count())
+Drop missing value
+df.dropna(inplace=True)
+Lihat semua kolom dan tipe data
+df.info()
+Membuat SALE PRICE's boxplot untuk melihat outliers
+plt.figure(figsize=(10,5))
+sns.boxplot(df["SALE PRICE"])
+plt.xticks(rotation=30)
+plt.show()
+Ada terlalu banyak outlier, jadi filter nilai di SALE PRICE
+df = df[(df['SALE PRICE'] > 10000) & (df['SALE PRICE'] < 800000)]
+Buat boxplot SALE PRICE untuk melihat data outlier setelah difilter
+plt.figure(figsize=(10,5))
+sns.boxplot(df["SALE PRICE"])
+plt.xticks(rotation=30)
+plt.show()
+Lihat semua kolom dan tipe data
+df.info()
+Enkode nilai BOROUGH
+df['BOROUGH']= df['BOROUGH'].map({1:'Manhattan', 2:'Bronx', 3: 'Brooklyn', 4:'Queens',5:'Staten Island'})
+df.head()
+## EDA
+Setelah data bersih, kita akan melakukan Exploratory Data Analysis
+### Mean
+Hitung rata-rata SALE PRICE untuk setiap BOROUGH
+mean1 = df[['BOROUGH','SALE PRICE']].groupby('BOROUGH').mean().sort_values(by='SALE PRICE', ascending=True)
+mean1
+Insight: Dari tabel di atas, kita tahu bahwa Manhattan memiliki rata-rata tertinggi di antara borough lainnya
+Hitung setiap rata-rata Borough
+mean2 = df.groupby('BOROUGH').mean()
+mean2
+Dari tabel di atas, kita tahu bahwa Manhattan memiliki rata-rata tertinggi di sebagian besar kolom di antara borough lainnya
+### Median
+Hitung median 'SALE PRICE' untuk setiap BOROUGH
+median = df[['BOROUGH','SALE PRICE']].groupby('BOROUGH').median().sort_values(by='SALE PRICE', ascending=True)
+median
+Dari tabel di atas, kita tahu bahwa Bronx memiliki median terendah sedangkan Brooklyn memiliki median tertinggi, dan tiga borough lainnya memiliki median yang sama
+### Modus
+Hitung 'TOTAL UNITS' mode of each BOROUGH
+mode1 = df[['BOROUGH','TOTAL UNITS']].groupby(['BOROUGH']).apply(pd.DataFrame.mode).reset_index(drop=True)
+mode1
+Dari tabel di atas, kita tahu bahwa Bronx paling banyak memiliki 2 unit, sedangkan borough lainnya kebanyakan memiliki 1 unit
+### Range
+Hitung kisaran SALE PRICE untuk setiap BOROUGH
+range1 = df.groupby('BOROUGH').apply(lambda x: x['SALE PRICE'].max() - x['SALE PRICE'].min())
+range1
+Semua Borough memiliki range yang tidak jauh berbeda
+### Variance
+Hitung varian dari setiap BOROUGH
+var = df.groupby('BOROUGH').var()
+var
+Dari tabel di atas, kita mengetahui bahwa hampir semua borough memiliki nilai variansi yang tinggi, yang berarti data memiliki distribusi yang besar
+### Standard Deviation
+Hitung standar deviasi dari setiap BOROUGH
+sd = df.groupby('BOROUGH').std()
+sd
+Dari tabel di atas, kita mengetahui bahwa sebagian besar borough memiliki nilai standar deviasi yang tinggi, yang berarti data memiliki distribusi yang besar
+### Probability Distribution
+Buat distribusi probabilitas HARGA JUAL Bronx
+df1=df.groupby("BOROUGH")
+br = df1.get_group('Bronx')
+
+ax = sns.distplot(br['SALE PRICE'],
+                  kde=True,
+                  bins=100,
+                  color='skyblue',
+                  hist_kws={"linewidth": 15,'alpha':1})
+ax.set(xlabel='price', ylabel='probability of occurence', title='Distribution of Sale Price in Bronx')
+Buat distribusi probabilitas HARGA JUAL Bronx
+from scipy.stats import norm
+x = pd.Series(br['SALE PRICE'].values, name="SALE PRICE")
+ax = sns.distplot(x, fit=norm, kde=True)
+Dari plot distribusi di atas kita tahu bahwa HARGA JUAL Bronx mengikuti distribusi normal
+## Confidence Interval
+Membuat data frame
+ci=df.groupby("BOROUGH").agg({"SALE PRICE": [np.mean, np.std, np.size]})
+ci
+Menghitung formula untuk CI
+mean_tot = ci.iloc [1,0]  
+sd = ci.iloc [1,1]
+n = ci.iloc [1,2]         
+z = 1.96    
+se = sd / np.sqrt(n)
+Hasil batas bawah dan atas CI
+print('lower limit of CI: ',mean_tot - z* se)
+print('upper limit of CI: ',mean_tot + z* se)
+Itu berarti rata-rata sebenarnya dari Harga Jual di Bronx akan turun antara 442637.0981249099 dan 453806.722346514
+## Hypothesis Testing
+Buat pengujian hipotesis cuaca sampel data memiliki Distribusi Gaussian
+H0 : sampel berdistribusi Gaussian.
+
+H1: sampel tidak memiliki distribusi Gaussian.
+Tes Shapiro-Wilk
+
+Asumsi
+
+- Pengamatan di setiap sampel independen dan terdistribusi secara identik (iid).
+from scipy.stats import pearsonr
+df1=df.groupby("BOROUGH")
+mh = df1.get_group('Manhattan')
+sp = mh['SALE PRICE']
+
+from scipy.stats import shapiro
+stat, p = shapiro(sp)
+print('stat=%.3f, p=%.3f' % (stat, p))
+if p > 0.05:
+    print('Probably Gaussian')
+else:
+    print('Probably not Gaussian')
+Didapatkan p-value < 0,05 sehingga H0 ditolak yang berarti sampel tidak berdistribusi Gaussian.
+---
+Analisis Keseluruhan
+
+Dari analisis yang telah dilakukan diperoleh informasi bahwa data penjualan properti NYC banyak terdapat data yang tidak baik sehingga perlu dilakukan pre-process data tersebut, data tersebut cenderung berdistribusi besar, dan sebagian besar menunjukkan tidak normal. didistribusikan
