@@ -1,6 +1,6 @@
 # Assignment python 1 
 
-Link Repository Assignment : https://github.com/raradita/H8_4/tree/main/Assignment%20Python%201
+Link Repository Assignment : https://github.com/raradita/H8_4/tree/main/PYTN_Assgn_1_4_RaraDitaPurnamaReta
 
 Link github : https://github.com/raradita/H8_4.git
 
