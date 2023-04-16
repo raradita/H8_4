@@ -2,6 +2,8 @@
 
 Link Repository Assignment : https://github.com/raradita/H8_4/tree/main/Assignment%20Python%201
 
+Link github : https://github.com/raradita/H8_4.git
+
 ## Project Overview
 The aim of this projects is to introduce you to data visualization with Python as concrete and as consistent as possible. Using what you’ve learned; download the London Crime Dataset from Kaggle. This dataset is a record of crime in major metropolitan areas, such as London, occurs in distinct patterns. This data covers the number of criminal reports by month, LSOA borough, and major/minor category from Jan 2008-Dec 2016.
 
