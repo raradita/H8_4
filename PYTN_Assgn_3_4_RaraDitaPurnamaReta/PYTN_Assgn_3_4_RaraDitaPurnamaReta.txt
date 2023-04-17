@@ -2,7 +2,6 @@ Link github : https://github.com/raradita/H8_4.git
 Link Repository Assignment : https://github.com/raradita/H8_4/tree/main/PYTN_Assgn_3_4_RaraDitaPurnamaReta
 
 # Assignment 3
-
 ## Project Overview
 The data is related with direct marketing campaigns of a Portuguese banking institution. The marketing campaigns were based on phone calls. Often, more than one contact to the same client was required, in order to access if the product (bank term deposit) would be ('yes') or not ('no') subscribed.
 
@@ -301,19 +300,19 @@ Import library KNN
 from sklearn.neighbors import KNeighborsClassifier
 knn = KNeighborsClassifier()
 Inisialisasi parameter untuk menyetel pencarian grid hyperparameter CV
-# grid_param2 = {
-#    'n_neighbors': [5,15,35], 
-#    'weights': ['uniform', 'distance'], 
-#    'metric': ['euclidean','manhattan']
-#    }
+grid_param2 = {
+    'n_neighbors': [5,15,35], 
+    'weights': ['uniform', 'distance'], 
+    'metric': ['euclidean','manhattan']
+    }
 Sesuaikan model dengan penyetelan hyperparameter grid search CV untuk mendapatkan parameter optimal.
-# gs2 = GridSearchCV(estimator=knn,
-#                      param_grid=grid_param2,
-#                      scoring='accuracy',
-#                      cv=3)
-# gs2.fit(train_smote_X,train_smote_Y)
-# best_parameters2 = gs2.best_params_
-# print(best_parameters2)
+gs2 = GridSearchCV(estimator=knn,
+                    param_grid=grid_param2,
+                    scoring='accuracy',
+                    cv=3)
+gs2.fit(train_smote_X,train_smote_Y)
+best_parameters2 = gs2.best_params_
+print(best_parameters2)
 Menemukan parameter terbaik adalah metric='manhattan',n_neighbors=5, weights='distance. Untuk mempersingkat waktu, melakukan pemodelan dengan parameter optimal yang diperoleh tadi.
 model2 = KNeighborsClassifier(metric='manhattan',n_neighbors=5, weights='distance')
 Menyesuaikan model dengan train smote data
@@ -349,18 +348,18 @@ Import library yang digunakan untuk Decision Tree
 from sklearn.tree import DecisionTreeClassifier
 dec_tree = DecisionTreeClassifier()
 Inisialisasi parameters untuk hyperparameter grid search CV
-# grid_param4 = {
-#    'max_depth': [10,20,100],  
-#    'criterion': ['gini','entropy']
-#    }
+grid_param4 = {
+   'max_depth': [10,20,100],  
+   'criterion': ['gini','entropy']
+   }
 Menyesualikan model dengan tuning hyperparameter grid search CV untuk memperoleh parameter yang optimal
-# gs4 = GridSearchCV(estimator=dec_tree,
-#                      param_grid=grid_param4,
-#                      scoring='accuracy',
-#                      cv=3)
-# gs4.fit(train_smote_X,train_smote_Y)
-# best_parameters4 = gs4.best_params_
-# print(best_parameters4)
+gs4 = GridSearchCV(estimator=dec_tree,
+                     param_grid=grid_param4,
+                     scoring='accuracy',
+                     cv=3)
+gs4.fit(train_smote_X,train_smote_Y)
+best_parameters4 = gs4.best_params_
+print(best_parameters4)
 Ditemukan parameter terbaik adalah criteria='entropy',max_depth=100. 
 model4 = DecisionTreeClassifier(criterion='entropy',max_depth=100)
 model4.fit(train_smote_X,train_smote_Y)
@@ -377,18 +376,18 @@ Import library yang digunakan untuk Random Forest
 from sklearn.ensemble import RandomForestClassifier
 rfc=RandomForestClassifier(random_state=123)
 Inisialisasi parameter untuk hyperparameter grid search CV
-# param_grid = { 
-#     'n_estimators': [200, 1000],
-#     'max_features': ['auto','log2'],
-#     'criterion' :['entropy','gini']
-# }
+param_grid = { 
+    'n_estimators': [200, 1000],
+    'max_features': ['auto','log2'],
+    'criterion' :['entropy','gini']
+}
 Menyesuaikan model untuk  hyperparameter grid search CV untuk mendapatkan optimal paramenter.
-# CV_rfc = GridSearchCV(estimator=rfc, 
-#                       param_grid=param_grid, 
-#                       cv= 3)
-# CV_rfc.fit(train_smote_X, train_smote_Y)
-# best_parameters5 = CV_rfc.best_params_
-# print(best_parameters5)
+CV_rfc = GridSearchCV(estimator=rfc, 
+                      param_grid=param_grid, 
+                      cv= 3)
+CV_rfc.fit(train_smote_X, train_smote_Y)
+best_parameters5 = CV_rfc.best_params_
+print(best_parameters5)
 Ditemukan parameter terbaik adalah criteria='entropy',max_features='auto',n_estimators=1000. 
 model5 = RandomForestClassifier(criterion='entropy',max_features='auto',n_estimators=1000)
 model5.fit(train_smote_X,train_smote_Y)
