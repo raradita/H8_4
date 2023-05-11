@@ -1,0 +1,389 @@
+https://github.com/raradita/H8_4/tree/main/Final_Project_2 ,
+
+https://github.com/raradita/H8_4.git
+
+# Final Project 2
+
+Nama Anggota Kelompok :
+1. Dwi Ratna
+2. Rara Dita Purnama Reta
+3. Muhammad Daffa Izzuddin
+4. Nur Khofifah
+## **Latar Belakang**
+Prediksi hujan yang akurat merupakan salah satu tugas yang paling menantang dan penting di dunia saat ini, tidak terkecuali Australia karena memiliki iklim yang beragam. Hal yang membuat menantang dikarenakan hujan bersifat dinamis dari fenomena iklim dan fluktuasi acak yang terlibat dalam proses fisik. Biasanya prediksi hujan dibuat untuk beberapa periode waktu yang meliputi mingguan, bulanan dan prediksi musiman. Prediksi hujan yang tepat dan akurat sangat penting untuk perencanaan dan pengelolaan sumber daya air, peringatan banjir, kegiatan konstruksi dan operasi penerbangan serta yang lainnya. Agar hasil prediksi hujan menjadi optimal, berbagai kompleksitas perlu ditangani, seperti data statistik cuaca yang memiliki banyak fitur diantaranya suhu, kelembaban, tekanan udara, kecepatan angin, dan sebagainya. 
+## **Dataset**
+Dataset yang digunakan adalah data rain in Australia yang berasal dari kaggle (https://www.kaggle.com/jsphyg/weather-dataset-rattle-package). 
+
+Dataset ini berisi histori cuaca harian selama 10 tahun dari berbagai lokasi di Australia yang terdiri dari 145460 baris dan 23 atribut.
+Atribut yang menjadi variabel target adalah RainTomorrow yang berisi "No" (tidak terjadi hujan besok) dan "Yes" (terjadi hujan besok 1mm atau lebih).
+## **Objective yang ingin dicapai**
+Objective yang ingin dicapai dalam analisis ini yaitu:
+
+- Dapat mengetahui faktor-faktor yang berpengaruh signifikan dalam memprediksi turunnya hujan
+
+- Dapat memprediksi hujan  berdasarkan faktor-faktor yang mempengaruhinya menggunakan metode Regresi Logistik dan SVM
+
+## **Import Libraries**
+%matplotlib inline
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.preprocessing import StandardScaler 
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn import svm
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+from sklearn.metrics import accuracy_score,f1_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+import pickle
+
+print('Librari sudah siap')
+## **Data Loading**
+Melakukan proses data loading menggunakan library Pandas
+df = pd.read_csv("/Users/ASUS/Hacktiv8/data/Final_Project/weatherAUS.csv")
+Melihat 5 baris teratas dataset
+df.head()
+Melihat 5 baris terakhir dataset
+df.tail()
+Melihat informasi kolom, baris, dan tipe data
+df.info()
+Dataset memiliki tipe data yang bervariasi yakni float, integer (numerik) dan object (kategorik). Selain itu juga terdapat missing value pada dataset karena banyaknya nilai non-null pada beberapa atribut tidak sesuai dengan banyaknya data entri.
+Mengelompokan atribut bertipe kategorik dan numerik
+# Variabel bertipe kategorik
+categorical = [i for i in df.columns if df[i].dtypes == 'O']
+
+# Variabel bertipe numerik
+numerical = [i for i in df.columns if i not in categorical]
+print('categorical:', categorical, '\n', 'numerical: ', numerical)
+Melihat jumlah baris dan kolom dataset
+df.shape
+Dataset memiliki 145460 baris dan 23 kolom
+Melihat semua kolom dari dataset
+df.columns
+Melihat unique values pada setiap atribut
+for col in df.columns:
+    print(col,': ', df[col].nunique())
+mengitung jumlah kemunculan setiap unique value pada RainTomorrow
+print(df['RainTomorrow'].value_counts())
+Mengecek missing value dan jumlahnya
+df.isnull().sum()
+Melihat persentase missing value
+missing_value = df.apply(lambda x: f'{((x.isnull().sum()/df.shape[0])*100).round(2)} %').sort_values(ascending=True)
+missing_value
+Terlihat bahwa terdapat 21 atribut yang mempunyai missing value. Untuk itu perlu dilakukan penanganan pada tahap selanjutnya.
+Melihat missing value pada atribut bertipe numerik
+df[numerical].isnull().sum()
+df[numerical].isnull().sum().plot.bar()
+plt.show()
+Terlihat bahwa missing value pada atribut **Sunshine** mencapai 48%, sedangkan pada atribut **Evaporation**, **Cloud9am** dan **Cloud3pm** mengandung missing value dikisaran 40%
+Melihat missing value pada atribut bertipe kategorik
+df[categorical].isnull().sum()
+df[categorical].isnull().sum().plot.bar()
+plt.show()
+Terlihat bahwa missing value pada atribut bertipe kategorik tidak terlalu tinggi, yaitu sekitar 7% pada atribut **WindDir9am** dan **WindGustDir**.
+Melihat distribusi pada atribut numerik
+df[numerical].hist(bins=10, figsize = (20,20))
+plt.show()
+Berdasarkan histogram terlihat bahwa beberapa atribut berdistribusi normal, seperti **Humidity3pm**, **MinTemp**, **Temp9am**, sedangkan beberapa atribut memiliki skewness yang tinggi, yaitu atribut **Evaporation** dan **Rainfall**.
+Melihat statistik deskriptif dari atribut bertipe numerik
+df[numerical].describe()
+Melihat statistik deskriptif dari atribut bertipe object
+df[categorical].describe()
+## **Data Cleaning**
+Bagian ini berisi proses penyiapan data berupa data cleaning sebelum
+dilakukan explorasi data lebih lanjut.
+#### Pengecekan kolom
+Memecah atribut Date menjadi atribut baru
+df['Date'] = pd.to_datetime(df['Date'])
+df.head()
+df['Day'] = df['Date'].dt.day
+df['Month'] = df['Date'].dt.month
+df['Year'] = df['Date'].dt.year
+df.head()
+Menghapus atribut **Date** karena sudah diganti dengan atribut **Day**, **Month**, **Year**.
+df.drop('Date', axis = 1, inplace = True)
+Memperbarui list atribut bertipe kategorik
+categorical = [i for i in df.columns if i not in numerical]
+categorical
+#### Mengecek duplikasi data
+df.duplicated().sum()
+Terlihat bahwa tidak terdapat duplikasi data.
+#### Menangani Outlier
+Mengecek statistik deskriptif dari data bertipe numerik
+df[numerical].describe()
+Terlihat bahwa atribut memiliki rentang yang berbeda-beda
+**Mengecek boxplot pada atribut numerik**
+for feature in numerical:
+    plt.figure(figsize=(5,5))
+    sns.boxplot(df[feature])
+    plt.title(feature)
+df[numerical].boxplot(figsize=(30,30))
+plt.show()
+Boxplot menunjukkan outlier dalam jumlah banyak pada atribut **MinTemp**, **MaxTemp**, **Rainfall**, **Evaporation**, **WindGustSpeed**, **WindSpeed9am**, **WindSpeed3pm**, **Humidity9am**, **Pressure9am**, **Pressure3pm**, **Temp9am**, dan **Temp3pm**.
+outlier = ['MinTemp', 'MaxTemp', 'Rainfall', 'Evaporation', 'WindGustSpeed','WindSpeed9am', 'WindSpeed3pm', 'Humidity9am', 'Pressure9am', 'Pressure3pm','Temp9am','Temp3pm']
+print('outlier :',outlier)
+Mengatasi outlier dengan IQR
+for feature in outlier:
+    q1 = df[feature].quantile(0.25)
+    q3 = df[feature].quantile(0.75)
+    IQR = q3-q1
+    lower_limit = q1 - (IQR*1.5)
+    upper_limit = q3 + (IQR*1.5)
+    df.loc[df[feature]<lower_limit,feature] = lower_limit
+    df.loc[df[feature]>upper_limit,feature] = upper_limit
+for feature in numerical:
+    plt.figure(figsize=(5,5))
+    sns.boxplot(df[feature])
+    plt.title(feature)
+df[outlier].boxplot(figsize = (15,15))
+plt.show()
+Mengecek ulang statistik deskriptif
+df[outlier].describe()
+#### Melakukan penanganan terhadap missing value
+Menghapus baris yang merupakan missing value pada atribut target (RainTomorrow)
+df2 = df.drop(df[df['RainTomorrow'].isnull()].index)
+df.shape, df2.shape
+Menghapus kolom dengan missing value >11%
+missing_value = df2.apply(lambda x: f'{((x.isnull().sum()/df2.shape[0])*100).round(2)} %').sort_values(ascending=True)
+missing_value
+df3 = df2.drop(['Cloud9am', 'Cloud3pm', 'Evaporation', 'Sunshine'], axis=1) 
+print('banyak kolom :', len(df3.columns))
+print('kolom :', df3.columns)
+Mengisi baris yang merupakan missing value 
+- Atribut bertipe numeric yang terdapat missing value akan ditangani dengan imputasi median
+- Atribut bertipe object yang terdapat missing value akan ditangani dengan imputasi modus
+Memperbarui list atribut bertipe numerik
+#update numerical
+numerical = [i for i in df3.columns if i not in categorical] 
+numerical
+for num_col in numerical:
+    df3[num_col].fillna(df3[num_col].median(),inplace=True)
+df3[numerical].isnull().sum()
+for cat_col in categorical:
+    df3[cat_col].fillna(df3[cat_col].mode()[0],inplace=True)
+df3.isnull().sum()
+df3.info()
+Dataset sudah tidak terdapat missing value
+#### Mengganti nama atribut
+df3 = df3.rename(columns={
+    'Location':'Lokasi',
+    'MinTemp': 'Suhu_Minimum',
+    'MaxTemp': 'Suhu_Maksimum',
+    'Rainfall':'Curah_Hujan',
+    'WindGustDir':'Arah_Angin',
+    'WindGustSpeed':'Kecepatan_Angin',
+    'WindDir9am':'Arah_Angin_9Pagi',
+    'WindDir3pm':'Arah_Angin_3Sore',
+    'WindSpeed9am':'Kecepatan_Angin_9Pagi',
+    'WindSpeed3pm':'Kecepatan_Angin_3Sore',
+    'Humidity9am':'Kelembaban_9Pagi',
+    'Humidity3pm':'Kelembaban_3Sore',
+    'Pressure9am':'Tekanan_Udara_9Pagi',
+    'Pressure3pm':'Tekanan_Udara_3Sore',
+    'Temp9am':'Suhu_9Pagi',
+    'Temp3pm':'Suhu_3Sore',
+    'RainToday':'Hari_ini_Hujan',
+    'RainTomorrow':'Hari_besok_Hujan',
+    'Day':'Hari',
+    'Month':'Bulan',
+    'Year':'Tahun'})
+df3.head()
+## Exploratory Data Analysis
+### Descriptive Statistics & Query
+Melihat statistik deskriptif pada data numerik
+df3.describe()
+Diperoleh bahwa:
+- curah hujan rata-rata 0.48 
+- kecepatan angin rata-rata berada pada 39.73
+- suhu terendah pada suhu minimum mencapai -6.35 derajat
+- suhu tertinggi pada suhu maksimum mencapai 43.65 derajat
+Melihat statistik deskritif pada data kategorik
+df3.describe(include="O")
+Diperoleh bahwa:
+- Terdapat 49 lokasi dengan lokasi paling banyak terletak di Canberra 
+- Tidak hujan (No) lebih dominan pada atribut Hari_ini_Hujan dan Hari_besok_Hujan
+- Arah angin paling sering adalah W
+- Arah angin 9pagi paling sering adalah N
+- Arah angin 3sore paling sering adalah SE
+Melihat persebaran data pada atribut **Hari_ini_Hujan** dan atribut target **Hari_besok_Hujan**
+%matplotlib inline
+plt.subplot(1,2,1)
+df3['Hari_besok_Hujan'].value_counts().plot.bar(color='g')
+plt.title('Hari besok Hujan')
+
+plt.subplot(1,2,2)
+df3['Hari_ini_Hujan'].value_counts().plot.bar(color='b')
+plt.title('Hari ini Hujan')
+plt.show()
+Terlihat kedua histogram menunjukkan proporsi yang sama. Pada atribut target **Hari_besok_Hujan**, terdapat perbedaan yang cukup signifikan antara nilai **No** dan **Yes**
+plt.figure(figsize=(20,10))
+ax = sns.countplot(x="Lokasi", hue="Hari_besok_Hujan", data=df3)
+Terlihat bahwa Hari_besok_Hujan mempunyai intensitas yang berbeda-beda di setiap lokasi.
+### Correlation Matrix
+df3.corr()
+Melakukan visualisasi korelasi antar variabel untuk melihat hubungan
+fig, ax = plt.subplots(figsize=(20,20))
+cm = sns.heatmap(df3.corr(), linewidths = .5, annot=True, fmt='.2f')
+Terlihat bahwa terdapat korelasi yang tinggi (>0,8) diantara atribut **Tekanan_Udara_3Sore** dan **Tekanan_Udara_9Pagi**, , **Suhu_Maksimum** dan **Suhu_3Sore**, **Suhu_Minimum** dan **Suhu_Maksimum**, **Suhu_9Pagi** dan **Suhu_Maksimum**, yang berarti atribut tsb merepresentasikan informasi yang sama. Oleh karena itu, harus dikeluarkan salah satu
+df4 = df3.drop(['Tekanan_Udara_3Sore','Suhu_Maksimum','Suhu_9Pagi'],axis = 1)
+fig, ax = plt.subplots(figsize=(20,20))
+cm = sns.heatmap(df4.corr(), linewidths = .5, annot=True, fmt='.2f')
+df4.columns
+## Data Preprocessing
+Memperbarui list atribut bertipe numerik dan kategorik
+categorical = [i for i in df4.columns if df4[i].dtypes == 'O']
+numerical = [i for i in df4.columns if i not in categorical] 
+print('categorical :', categorical)
+print('numerical :', numerical)
+### Encode
+Encoding atribut kategorik menggunakan replace function pada atribut bertipe Object
+df4['Hari_ini_Hujan'].replace({'No':0, 'Yes': 1}, inplace = True)
+df4['Hari_besok_Hujan'].replace({'No':0, 'Yes': 1}, inplace = True)
+def encode_data(feature_name):
+     
+    mapping_dict = {}
+    unique_values = list(df4[feature_name].unique())
+    for idx in range(len(unique_values)):
+        mapping_dict[unique_values[idx]] = idx
+    print(mapping_dict)
+    return mapping_dict
+df4['Arah_Angin'].replace(encode_data('Arah_Angin'),inplace = True)
+df4['Arah_Angin_9Pagi'].replace(encode_data('Arah_Angin_9Pagi'),inplace = True)
+df4['Arah_Angin_3Sore'].replace(encode_data('Arah_Angin_3Sore'),inplace = True)
+df4['Lokasi'].replace(encode_data('Lokasi'), inplace = True)
+df4.head()
+Mengecek ulang korelasi
+fig, ax = plt.subplots(figsize=(20,20))
+cm = sns.heatmap(df4.corr(), linewidths = .5, annot=True, fmt='.2f')
+Diperoleh:
+- Atribut Lokasi, Arah_Angin, Arah_Angin_3Sore, Tekanan_Udara_9Pagi, Suhu_3Sore, dan Tahun berkorelasi negatif dengan atribut target (Hari_besok_Hujan)
+- Atribut selain yang disebutkan di atas memiliki korelasi positif terhadap Hari_besok_Hujan.
+- Atribut yang berkorelasi cukup tinggi dengan atribut Hari_besok_Hujan adalah Kelembaban_3Sore, Curah_Hujan, dan Hari_ini_Hujan
+## Feature Selection
+Bagian ini berisi proses penyiapan data untuk proses pelatihan model,
+seperti pembagian data menjadi train-dev-test, transformasi data
+(normalisasi, encoding, dll.), dan proses-proses lain yang dibutuhkan.
+X = df4.drop(['Hari_besok_Hujan'], axis=1)
+y = df4['Hari_besok_Hujan']
+print(X.shape)
+print(y.shape)
+Melakukan feature selection menggunakan library *ExtraTreesRegressor* yang mengambil 10 atribut paling penting
+etr_model = ExtraTreesRegressor()
+etr_model.fit(X,y)
+etr_model.feature_importances_
+feature_imp = pd.Series(etr_model.feature_importances_,index=X.columns)
+feature_imp.nlargest(10).plot(kind='barh')
+Diperoleh 10 atribut paling berpengaruh dalam model
+feature_imp
+Selain itu juga melakukan feature selection menggunakan library SelectKBest dengan k=10
+from sklearn.feature_selection import SelectKBest, f_classif
+
+selector = SelectKBest(f_classif, k = 10)
+X_new = selector.fit_transform(X, y)
+names = X.columns.values[selector.get_support()]
+scores = selector.scores_[selector.get_support()]
+names_scores = list(zip(names, scores))
+ns_df = pd.DataFrame(data = names_scores, columns=['Feat_names', 'F_Scores'])
+
+ns_df_sorted = ns_df.sort_values(['F_Scores', 'Feat_names'], ascending = [False, True])
+print(ns_df_sorted)
+Setelah diperoleh feature yang paling berpengaruh pada model, dilakukan inisiasi final pada variabel X yang akan dijadikan training.
+
+Dalam hal ini dipilih5 atribut yang paling berpengaruh signifikan berdasarkan kedua uji feature selection yang telah dilakukan, yaitu atribut lokasi, hari_ini_hujan, kelembaban_3sore, kecepatan_angin, dan tekanan_udara_9pagi.
+X_fit = df4[['Lokasi','Hari_ini_Hujan','Kelembaban_3Sore','Kecepatan_Angin','Tekanan_Udara_9Pagi']]
+X_fit.head()
+X_fit.info()
+Melihat dimensi dari X_fit
+X_fit.shape
+Memiliki 142193 baris dan 5 atribut.
+## Feature Scaling
+input_variables = [i for i in X_fit.columns if i != 'Hari_besok_Hujan']
+Melakukan scaling/standarisasi data menggunakan StandarScaler
+scaler = StandardScaler()
+X_fit[input_variables] = scaler.fit_transform(X_fit[input_variables])
+X_fit.head()
+X_fit.describe()
+## Model Defining
+Bagian ini berisi cell untuk mendefinisikan model sampai kompilasi model.
+Membagi data menjadi Training dan Testing dengan proporsi 0.8 dan 0.2
+X_train, X_test, y_train, y_test = train_test_split(
+    X_fit, y, test_size=0.20, random_state=325)
+### Logistic Regression
+Metode pengujian pada training ini menggunakan metode regresi logistik.
+Alasan penggunaan metode karena regresi logistik dapat dipakai untuk masalah klasifikasi biner. Model akan menghitung probabilitas data masing-masing kelas kemudian membuat keputusan akhir dengan mengambil probabilitas tertinggi.
+logreg_model = LogisticRegression(penalty = 'l2', random_state = 5)
+### SVM
+Model kedua yakni model SVM. Model ini digunakan sebagai pembanding model regresi logistik. SVM dapat mengolah data berdimensi tinggi tanpa mengalami penurunan performa yang signifikan.
+for kernel in ["linear", "poly", "rbf"]:
+               accuracy = cross_val_score(SVC(kernel=kernel), X, y, cv=2, scoring="accuracy").mean()
+               print("{}:{}".format(kernel, accuracy))
+svm_model = svm.SVC(kernel='linear')
+## Model Training
+Cell pada bagian ini hanya berisi code untuk melatih model dan output yang dihasilkan.
+logreg_model = logreg_model.fit(X_train, y_train)
+svm_model = svm_model.fit(X_train, y_train)
+## Model Evaluation
+Pada bagian ini, dilakukan evaluasi model yang harus menunjukkan
+bagaimana performa model berdasarkan metrics yang dipilih.
+### Logistic Regression
+y_pred_logreg = logreg_model.predict(X_test)
+print("Test score:", logreg_model.score(X_test, y_test))
+print("Train score:", logreg_model.score(X_train, y_train))
+cm_logreg = confusion_matrix(y_test, y_pred_logreg)
+sns.heatmap(cm_logreg, annot=True, fmt="d", linewidths=.5, cmap = 'Reds')
+plt.show()
+print(classification_report(y_test, y_pred_logreg))
+print('Ringkasan Evaluasi Model')
+print('Akurasi :', accuracy_score(y_test, y_pred_logreg))
+print('Presisi :', precision_score(y_test,y_pred_logreg))
+print('Recall :', recall_score(y_test,y_pred_logreg))
+print('F1 Score :', f1_score(y_test,y_pred_logreg))
+### SVM
+y_pred_svm = svm_model.predict(X_test)
+
+print("Test score:", svm_model.score(X_test, y_test))
+print("Train score:", svm_model.score(X_train, y_train))
+cm_svm = confusion_matrix(y_test, y_pred_svm)
+sns.heatmap(cm_svm, annot=True, fmt="d", linewidths=.5, cmap = 'Reds')
+plt.show()
+print(classification_report(y_test, y_pred_svm))
+print('Ringkasan Evaluasi Model')
+print('Akurasi :', accuracy_score(y_test, y_pred_svm))
+print('Presisi :', precision_score(y_test,y_pred_svm))
+print('Recall :', recall_score(y_test,y_pred_svm))
+print('F1 Score :', f1_score(y_test,y_pred_svm))
+Diperoleh bahwa:
+- Model regresi memiliki nilai evaluasi model Recall dan F1 Score yang lebih baik dibandingkan model svm, tetapi akurasi dan presisinya lebih rendah.
+- Nilai evaluasi dari kedua model tidak berbeda jauh satu sama lain, kedua model cukup baik untuk melakukan prediksi hujan di Australia.
+## Model Inference
+Bagian ini diisi dengan model inference, di mana model yang sudah kita
+latih akan dicoba pada data selain data yang sudah tersedia. Data yang
+dimaksud bisa berupa data buatan oleh student, ataupun data yang ada
+pada internet.
+X_new = {'Lokasi':[0,1,15,34,48], 'Hari_ini_Hujan':[0,1,0,1,1], 'Kelembaban_3Sore':[11,1.25,2.3,20.4,4.52], 'Kecepatan_Angin':[12.45,20.5,11.4,45.3,30.2], 'Tekanan_Udara_9Pagi':[10.85,4.5,12,15.5,20.3]}
+X_new = pd.DataFrame(X_new)
+X_new.head()
+Melakukan standarisasi pada data baru
+scal = StandardScaler()
+X_new = scal.fit_transform(X_new)
+list(X_new)
+Melakukan prediksi pada data baru
+y_pred1 = logreg_model.predict(X_new)
+y_pred2 = svm_model.predict(X_new)
+print('Prediksi Hujan: ')
+print(y_pred1)
+print(y_pred2)
+## Conclusions
+Dari analisis yang telah dilakukan, diperoleh kesimpulan sebagai berikut:
+- Terdapat 22 atribut yang diasumsikan memengaruhi Hari besok Hujan. Setelah dilakukan analisis, diambil 5 atribut/faktor yang paling berpengaruh dalam model.
+- Faktor-faktor yang berpengaruh signifikan terhadap terjadi Hari besok Hujan yaitu lokasi, hari ini hujan, kelembaban 3 sore, kecepatan angin, dan tekanan udara 9 pagi.
+- Model regresi logistik mempunyai akurasi sebesar Akurasi 0.836, Presisi sebesar 0.713, Recall sebesar 0.457, dan F1 Score sebesar 0.557.
+- Model SVM mempunyai akurasi sebesar Akurasi 0.838, Presisi sebesar 0.742, Recall sebesar 0.427, dan F1 Score sebesar 0.542.
+- Karena pada target tidak seimbang, maka evaluasi model yang digunakan adalah F1 Score dan model yang dipilih untuk deployment adalah regresi logistik.
