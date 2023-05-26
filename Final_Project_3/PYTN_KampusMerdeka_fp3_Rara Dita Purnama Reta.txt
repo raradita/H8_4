@@ -1,0 +1,375 @@
+Link github : https://github.com/raradita/H8_4
+https://github.com/raradita/H8_4/tree/main/Final_Project_3
+
+## **Final Project 3 Ensemble**
+Nama Anggota Kelompok :
+
+1. Dwi Ratna
+2. Rara Dita Purnama Reta
+3. Muhammad Daffa Izzuddin
+4. Nur Khofifah
+#### **Dataset**
+Dataset yang digunakan pada project ini yaitu heart failure clinical records yang tersedia dari website kaggle melalui [link berikut](https://www.kaggle.com/datasets/andrewmvd/heart-failure-clinical-data)
+
+Dataset ini  berisi faktor-faktor kematian oleh gagal jantung yang memiliki 13 atribut dengan 299 rows. Atribut yang menjadi target yaitu atribut Death Event/Kematian, sedangkan atribut lainnya merupakan prediktor.
+
+#### **Objective yang ingin dicapai**
+Objective yang ingin dicapai dalam analisis ini yaitu:
+
+- Memahami konsep Classification dengan Ensemble Model
+- Mampu mempersiapkan data untuk digunakan dalam Ensemble Model
+- Dapat mengimplementasikan Ensemble Model untuk membuat prediksi
+## **Import Libraries**
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+import warnings
+warnings.filterwarnings("ignore")
+
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import f_regression
+from sklearn.ensemble import BaggingClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
+
+from sklearn import metrics
+from sklearn.metrics import roc_curve
+from sklearn.metrics import accuracy_score,f1_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import ExtraTreesClassifier
+
+import pickle
+
+print("Library siap digunakan!")
+## **Data Loading**
+Bagian ini berisi proses data loading yang kemudian dilanjutkan dengan
+explorasi data secara sederhana.
+df = pd.read_csv('data/heart_failure_clinical_records_dataset.csv')
+print("Dataset berisi {} baris dan {} kolom (atribut)".format(df.shape[0], df.shape[1]))
+df.head()
+Melihat 5 baris terbawah dataset
+df.tail()
+Melihat informasi pada dataset
+df.info()
+Pada tahap ini terdapat 2 tipe data yaitu float dan integer(numerik). Terdapat 299 baris dan 13 kolom
+Melihat deskriptif statistik dasar pada kolom numerik
+df.describe()
+Melihat rincian nama kolom
+df.columns
+Mengelompokan atribut bertipe kategorik dan numerik
+categorical = [i for i in df.columns if df[i].dtypes == 'O']
+
+# Variabel bertipe numerik
+numerical = [i for i in df.columns if i not in categorical]
+print('categorical:', categorical, '\n', 'numerical: ', numerical)
+df[numerical].hist(bins=13, figsize=(20,20))
+plt.show()
+Berdasarkan histogram terlihat bahwa tidak terdapat atribut yang berdistribusi normal dan atribut yang memiliki skewness tinggi, yaitu atribut creatinine_phosphokinase.
+## **Data Cleaning**
+Bagian ini berisi proses penyiapan data berupa data cleaning sebelum dilakukan explorasi data lebih lanjut
+# Melihat 5 baris teratas
+df.head()
+Melihat apakah dataset terdapat duplicated atau tidak
+df.duplicated().sum()
+Dari hasil diatas tidak terdapat duplicated data
+Melihat missing value pada dataset
+df.isnull().sum()
+Tidak terdapat missing value pada dataset
+Melihat jumlah data unik
+for col in df.columns:
+    print(col,': ', df[col].nunique())
+Melihat keseluruhan unique values dari masing-masing kolom
+cols = df.columns.tolist()
+for i in cols:
+    print(f"Kolom {i}")
+    print(df[i].unique())
+Dari hasil diatas terlihat pada kolom `age` terdapat nilai yang tidak bulat yaitu 60.667, sehingga perlu dirubah untuk membulatkan nilai tersebut.
+Pembulatan value pada data `age`
+df['age'].replace([60.667], 60, inplace=True)
+df['age'].unique()
+
+### **Menangani outlier**
+Mengecek statistik deskriptif dari data bertipe numerik
+df[numerical].describe()
+Terlihat pada atribut memiliki rentang yang berbeda
+Mengecek boxplot pada atribut numerik
+for feature in df:
+    plt.figure(figsize=(5,5))
+    sns.boxplot(df[feature])
+    plt.title(feature)
+df[numerical].boxplot(figsize=(30,30))
+plt.show()
+Boxplot diatas menunjukkan masih terdapat atribut dengan nilai outlier yang banyak.
+Outlier treatment untuk menghilangkan outlier dari atribut numerik
+outlier = ['creatinine_phosphokinase', 'ejection_fraction', 'platelets', 'serum_creatinine', 'serum_sodium']
+print('outlier :',outlier)
+Mengatasi outlier dengan IQR
+features_with_outliers = ['creatinine_phosphokinase','ejection_fraction','platelets','serum_creatinine','serum_sodium']
+for feature in features_with_outliers:
+    q1 = df[feature].quantile(0.25)
+    q3 = df[feature].quantile(0.75)
+    IQR = q3-q1
+    lower_limit = q1 - (IQR*1.5)
+    upper_limit = q3 + (IQR*1.5)
+    df.loc[df[feature]<lower_limit,feature] = lower_limit
+    df.loc[df[feature]>upper_limit,feature] = upper_limit
+df[numerical].boxplot(figsize=(30,30))
+plt.show()
+df[outlier].describe()
+Berdasarkan pembaharuan diatas atribut numerik sudah terbebas dari outlier
+Mengganti nama atribut
+df.head()
+df1 = df.rename(columns={'age':'Usia', 
+                        'anaemia':'Anemia', 
+                        'creatinine_phosphokinase':'TesCPK', 
+                        'diabetes':'Diabetes', 
+                        'ejection_fraction':'EF', 
+                        'high_blood_pressure':'Hipertensi', 
+                        'platelets':'Trombosit', 
+                        'serum_creatinine':'Serum_Kreatinina', 
+                        'serum_sodium':'Serum_Sodium', 
+                        'sex':'Gender', 
+                        'smoking':'Merokok', 
+                        'time':'Waktu', 
+                        'DEATH_EVENT':'Kematian'})
+
+df1.head()
+df1.columns
+## **Exploratory Data Analysis**
+
+df1.describe()
+#L = Laki-laki
+#P = Perempuan
+
+
+L = df1[df1["Gender"] == 1]
+P = df1[df1["Gender"] == 0]
+
+## define the survival of L
+L_alive = L[df1["Kematian"] == 0]
+L_dead = L[df1["Kematian"] == 1]
+
+## define the survival of P
+P_alive = P[df1["Kematian"] == 0]
+P_dead = P[df1["Kematian"] == 1]
+
+## labels
+labels = ['Laki-laki - Hidup','Laki-laki - Meninggal Dunia', "Perempuan -  Hidup", "Perempuan - Meninggal Dunia"]
+
+## values
+values = [len(L[df1["Kematian"]==0]),
+          len(L[df1["Kematian"]==1]),
+          len(P[df1["Kematian"]==0]),
+          len(P[df1["Kematian"]==1])
+]
+
+## colors
+colors = sns.color_palette('colorblind')[0:4]
+
+## pie chart
+plt.pie(values, labels = labels, colors = colors, autopct='%.0f%%')
+plt.title("Analisis Kelangsungan Hidup Pasien Berdasarkan Jenis Kelamin")
+plt.show()
+Dari hasil pie chart diatas menunjukkan bahwa:
+- 44% Pasien Laki-laki yang Hidup dan 21% Pasien Laki-laki yang Meninggal Dunia
+- Sedangkan 24% Pasien Perempuan yang Hidup dan 11% Pasien Perempuan yang Minggal Dunia
+Melihat Trombosit pasien dengan penyakit jantung terbanyak dan terendah
+df1['Trombosit'].agg(('min', 'max'))
+Dari data diatas maka dapat diketahui bahwa trombosit terkecil pasien yaitu 25100.0, dan trombosit terbanyak pasien yaitu 850000.0. Kadar trombosit yang normal pada setiap manusia berkisar 150.000-450.000 per mikroliter darah
+Melihat kadar serum kreatinina pada pasien dengan penyakit jantung tertinggi dan terendah
+df1['Serum_Kreatinina'].agg(('min','max'))
+Dari data diatas dapat diketahui bahwa kadar serum keratin terkecil pasien yaitu 0.5 mg/dL dan kadar serum keratin tertinggi yaitu 9.4 mg/dL. Kreatin adalah zat yang dihasilkan dari konstraksi otot normal dan dilepaskan ke dalam darah, kemudian melewati ginjal untuk diekskresikan. Nilai normal kreatinin serum pada Laki-laki dan Perempuan adalah 0,6 - 1,3 mg/dL.
+Melihat proporsi data pada kolom Usia dan Kematian menggunakan .cosstab()
+pd.crosstab(df1.Kematian, df1.Usia)
+Grouping data pada kolom Usia dan Kematian untuk melihat rata-ratanya
+df1[['Usia','Kematian']].groupby('Kematian').mean().sort_values(by='Usia',ascending=True)
+Dilihat dari data diatas dapat diketahui bahwa rata-rata Usia pasien Meninggal Dunia berada pada usia 65 tahun, sedangkan rata-rata pasien yang bertahan hidup berada pada usia 58 tahun
+df1[
+    (df1['Usia'] > 50.0) &
+    (df1['Serum_Kreatinina'] == 1) &
+    (df1['Serum_Sodium'] == 140) 
+].head()
+Melihat proporsi data Status Kematian berdasarkan Gender dan Hipertensi
+df1['Jenis_Kelamin'] = df1['Gender'].replace({1:'Pria',0:'Wanita'})
+df1['Status_Kematian'] = df1['Kematian'].replace({1:'Meninggal', 0:'Hidup'})
+df1.head()
+Melakukan grouping untuk atribut Jenis_Kelamin, Hipertensi dan Status Kematian
+df1.groupby(['Jenis_Kelamin', 'Hipertensi', 'Status_Kematian']).size().unstack().apply(lambda x: x/x.sum(),axis=1)
+Dari hasil di atas terlihat bahwa ada beberapa perbedaan hubungan, namun perbedaan tersebut lebih terkait dengan status hipertensi pasien daripada jenis kelamin. Jenis kelamin tidak berpengaruh signifikan terhadap status kematian. Pasien wanita tanpa hipertensi memiliki angka kematian sekitar 27,86%, pasien hipertensi sekitar 38,63%, sedangkan pasien pria tanpa hipertensi memiliki angka kematian sekitar 30% dan untuk pasien hipertensi sekitar 36%. Hal ini menunjukkan bahwa nilai hipertensi berpengaruh signifikan terhadap status kematian.
+Melihat presentase status kematian
+fig, ax = plt.subplots(1,2,figsize=(15,8))
+
+#Pie Chart Persentase Status Kematian
+df1['Status_Kematian'].value_counts().plot(
+    kind='pie', 
+    ax=ax[0], 
+    autopct='%.1f%%',
+    explode=[0,0.1],
+    cmap='tab20b',
+    shadow=True
+)
+ax[0].set_title('Persentase Status Kematian')
+ax[0].set_ylabel('')
+
+#Barchart untuk setiap nilai pada kelas target
+df1.groupby('Status_Kematian').agg({'Status_Kematian':'count'}).plot(
+    kind='bar',
+    ax=ax[1],
+    color='magenta'
+)
+ax[1].set_title('Jumlah dari Status Kematian')
+ax[1].set_ylabel('Jumlah')
+ax[1].set_xlabel('Status Kematian')
+ax[1].legend(title='Target')
+Dari hasil viasualisasi diatas dapat dilihat bahwa presentase status kematian untuk pasien Hidup sebesar 67.9% sedangkan untuk pasien Meninggal sebesar 32.1%
+## Melihat Persebaran jumlah kematian pasien berdasaarkan usia
+plt.figure(figsize=(24,12))
+ax = sns.countplot(x="Usia", hue="Kematian", data=df1, palette='Purples')
+plt.title('Persebaran Jumlah Kematian Pasien Berdasarkan Usia', fontsize=20)
+Dari hasil bar chart diatas dapat dilihat bahwa persebaran kematian tertinggi ada pada usia 60 tahun dan persebaran kematian yang memiliki nilai sama atau hampir setara ada pada usia 54 tahun, 57 tahun, dan 77 tahun.
+fig, ax = plt.subplots(figsize=(15, 8))
+
+sns.boxplot(x='Hipertensi', y='EF', data=df1)
+
+plt.xlabel("Tekanan Darah Tinggi", fontsize= 12)
+plt.ylabel("EF", fontsize= 12)
+plt.title("Tekanan Darah Tinggi vs Ejection Fraction", fontsize= 15)
+plt.figure(figsize=(16, 9))
+sns.heatmap(df1.corr(), annot=True, cmap='plasma')
+plt.title("visualisasi korelasi antar variabel untuk melihat hubungan", fontsize= 15)
+plt.show()
+Berdasarkan visualisasi di atas, dapat disimpulkan bahwa
+
+- Merokok dan Gender memiliki korelasi tinggi yaitu 0.45
+- Waktu memiliki korelasi rendah dengan Kematian yaitu -0.53
+- Serum_Kreatinin memiliki korelasi tinggi dengan Kematian dengan nilai 0.29
+- Usia juga memiliki korelasi tinggi dengan Kematian dengan nilai 0.25
+## **Data Preprocessing**
+
+cat_col = df1.select_dtypes(object).columns.tolist()
+len(cat_col)
+Mengkonversi nilai kategori menjadi numerik
+categorical = [i for i in df1.columns if df1[i].dtypes == 'O']
+numerical = [i for i in df1.columns if i not in categorical] 
+print('categorical :', categorical)
+print('numerical :', numerical)
+le = LabelEncoder()
+df1[cat_col] =df1[cat_col].astype('str').apply(le.fit_transform)
+
+df1.info()
+df1.head()
+df1.tail()
+Drop atribut kematian
+X = df1.drop(['Kematian'], axis=1)
+y = df1['Kematian']
+print(X.shape)
+print(y.shape)
+# Feature Selection
+
+Pada bagian ini berisi proses memilih fitur yang paling berpengaruh terhadap model
+etc = ExtraTreesClassifier()
+etc.fit(X,y)
+Melakukan feature selection menggunakan library F regression dengan k=10
+plt.figure(figsize=(14,8))
+feat_importances= pd.Series(etc.feature_importances_,index=X.columns)
+feat_importances.nlargest(12).plot(kind='barh')
+plt.show()
+Setelah fitur yang paling mempengaruhi model diperoleh, inisialisasi akhir dari variabel X dilakukan, yang digunakan sebagai training model. 
+Dalam hal ini dipilih 5 atribut dengan pengaruh terbesar berdasarkan uji seleksi fitur yang telah dilakukan, yaitu atribut Serum_Sodium, Usia, EF, Serum_Keratinina dan Waktu. 
+X_fit = df1[['Usia','EF','Serum_Sodium','Serum_Kreatinina','Waktu']]
+X_fit.head()
+## Model Defining
+
+Bagian ini berisi cell untuk mendefinisikan model sampai kompilasi model.
+Membagi data menjadi Training dan Testing dengan proporsi 0.8 dan 0.2
+# Melakukan splitting data
+X_train, X_test, y_train, y_test = train_test_split(X_fit, y, test_size=0.2,random_state=46)
+Model yang pertama kami menggunakan DecisionTree dengan metode ensamble Bagging Classifier
+model1 = DecisionTreeClassifier()
+bag_model = BaggingClassifier(base_estimator=model1, n_estimators=100, bootstrap=True)
+Metode yang kedua kami menggunakan ensamble Random Forest Classifier
+model2 = RandomForestClassifier(n_estimators=50,random_state=46)
+Metode yang ketiga kami menggunakan ensamble Gradient Boosting Classifier
+model3 = GradientBoostingClassifier(n_estimators=100, random_state=46)
+## **Model Training**
+
+Cell pada bagian ini hanya berisi code untuk melatih model dan output yang dihasilkan.
+bag_model.fit(X_train, y_train)
+model2.fit(X_train, y_train)
+model3.fit(X_train, y_train)
+## **Model Evaluation**
+Pada bagian ini, dilakukan evaluasi model yang harus menunjukkan bagaimana performa model berdasarkan metrics yang dipilih.
+> **Bagging Classifier**
+y_pred = bag_model.predict(X_test)
+
+bagg = confusion_matrix(y_test, y_pred)
+sns.heatmap(bagg, annot=True, fmt="d", linewidths=.5, cmap = 'Greens')
+plt.show()
+
+print("Training accuracy score: ",bag_model.score(X_train, y_train))
+print("Testing accuracy score: ",accuracy_score(y_pred, y_test))
+scores = cross_val_score(bag_model, X_train, y_train, cv = 5, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+print('Average cross-validation score: {}'.format(scores.mean()))
+print(classification_report(y_test, y_pred))
+> **Random Forest Classifier**
+y_pred = model2.predict(X_test)
+
+rf = confusion_matrix(y_test, y_pred)
+sns.heatmap(rf, annot=True, fmt="d", linewidths=.5, cmap = 'Blues')
+plt.show()
+
+print("Training accuracy score: ",model2.score(X_train, y_train))
+print("Testing accuracy score: ",accuracy_score(y_pred, y_test))
+scores = cross_val_score(model2, X_train, y_train, cv = 5, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+print('Average cross-validation score: {}'.format(scores.mean()))
+print(classification_report(y_test, y_pred))
+> **Gradient Boosting Classifier**
+y_pred = model3.predict(X_test)
+
+gb = confusion_matrix(y_test, y_pred)
+sns.heatmap(gb, annot=True, fmt="d", linewidths=.5, cmap = 'BuPu')
+plt.show()
+
+print("Training accuracy score: ",model3.score(X_train, y_train))
+print("Testing accuracy score: ",accuracy_score(y_pred, y_test))
+scores = cross_val_score(model3, X_train, y_train, cv = 5, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+print('Average cross-validation score: {}'.format(scores.mean()))
+print(classification_report(y_test, y_pred))
+Di antara hasil dari ketiga model yang digunakan, model ensembel Random Forest Classifier memiliki nilai skor model terbaik dibandingkan dengan Model Bagging Classifier dan Model Gradient Boosting Classifier. Oleh karena itu, model Random Forest Classifier merupakan model yang baik untuk memprediksi kematian pada pasien gagal jantung. 
+## **Model Inference**
+Bagian ini diisi dengan model inference, di mana model yang sudah kita latih akan dicoba pada data selain data yang sudah tersedia. Data yang dimaksud bisa berupa data buatan oleh student, ataupun data yang ada pada internet.
+X_new = {'Usia':[81,42,50,65,74],'EF':[25,30,35,38,22],'Serum_Sodium':[133,138,120,140,116],
+        'Serum_Kreatinin':[1.4,3.9,2,1.1,2.3],'Waktu':[1,2,3,4,5]}
+X_new = pd.DataFrame(X_new)
+X_new.head()
+Melakukan Standarisasi pada data baru
+from sklearn.discriminant_analysis import StandardScaler
+
+scal = StandardScaler()
+X_new = scal.fit_transform(X_new)
+list(X_new)
+Melakukan prediksi pada data baru
+y_pred_new = model2.predict(X_new)
+print('Prediksi Pasien yaitu: ')
+print(y_pred_new)
+## **Kesimpulan**
+- Terdapat 13 karakteristik yang diyakini mempengaruhi kematian pasien gagal jantung. Setelah analisis, kami mengidentifikasi 5 karakteristik/faktor model yang paling berpengaruh.
+- Pada dataset tidak ada nilai Missing Value untuk setiap atribut dalam dataset
+- Faktor yang secara signifikan mempengaruhi kematian pasien gagal jantung adalah Usia, Ejection Fraction (EF), Serum kreatinina, Serum Sodium dan Waktu.
+- Dalam proyek ini kami menggunakan Ensemble Bagging Classifier, Random Forest Classifier dan Gradient Boosting Classifier
+- Model ansambel Random Forest Classifier memiliki skor model terbaik dibandingkan dengan Bagging Classifier dan Gradient Boosting. Oleh karena itu, model random forest classifier merupakan model yang baik untuk memprediksi kematian pada pasien gagal jantung.
+- Model Bagging Classifier memiliki presisi **0,80**, presisi **0,79**, recall **0,73** dan skor F1 **0,76**.
+- Model Random Forest Classifier memiliki presisi **0,85**, presisi **0,90**, recall **0,73**, dan skor F1 **0, 81**.
+- Model Gradient Boosting Classifier memiliki presisi **0,80**, presisi **0,82**, recall **0,69**, dan skor F1 **0, 75**. 
